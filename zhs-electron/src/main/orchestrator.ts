@@ -4,6 +4,7 @@ import { clickRect, moveMouseOverRect, pressKey, settle } from './input'
 import {
   enumerateLessons,
   getLessonName,
+  getLessonReadiness,
   getLessonRect,
   getProgress,
   getQuestionTargets,
@@ -140,7 +141,7 @@ export class AutomationOrchestrator {
         this.log('info', `Removed page widgets: ${optimization.removedSelectors.join(', ')}`, task.id)
       }
 
-      await this.waitForLessons(task.type)
+      await this.waitForLessonState(task.type, task.id)
       const unfinished = await enumerateLessons(this.probe, task.type, false)
       const lessonPlan =
         unfinished.length > 0 ? unfinished : await enumerateLessons(this.probe, task.type, true)
@@ -245,20 +246,52 @@ export class AutomationOrchestrator {
     }
   }
 
-  private async waitForLessons(type: CourseTask['type']): Promise<void> {
+  private async waitForLessonState(type: CourseTask['type'], taskId: string): Promise<void> {
     let deadline = Date.now() + 30000
+    let firstSeenAt = 0
+    let stableSince = 0
+    let lastSignature = ''
+
     while (Date.now() < deadline) {
       this.assertNotStopping()
       if (await this.waitWhileCaptcha()) {
         deadline = Date.now() + 30000
+        firstSeenAt = 0
+        stableSince = 0
+        lastSignature = ''
       }
-      const lessons = await enumerateLessons(this.probe, type, true).catch(() => [])
-      if (lessons.length > 0) {
+
+      const readiness = await getLessonReadiness(this.probe, type).catch(() => undefined)
+      if (!readiness || readiness.count === 0) {
+        await sleep(500)
+        continue
+      }
+
+      const now = Date.now()
+      if (firstSeenAt === 0) {
+        firstSeenAt = now
+        stableSince = now
+        lastSignature = readiness.signature
+      } else if (readiness.signature !== lastSignature) {
+        stableSince = now
+        lastSignature = readiness.signature
+      }
+
+      const stableFor = now - stableSince
+      const elapsedSinceFirstRows = now - firstSeenAt
+      const progressReady = type !== 'fusioncourseh5' || readiness.progressCount >= readiness.count
+      const hasCompletionSignal = readiness.doneCount > 0 || readiness.progressCount > 0
+      const noSignalGraceElapsed = elapsedSinceFirstRows >= 8000
+
+      if (progressReady && stableFor >= 1500 && (hasCompletionSignal || noSignalGraceElapsed)) {
         await settle(500)
         return
       }
+
       await sleep(500)
     }
+
+    this.log('warn', 'Lesson completion state did not fully stabilize; continuing with current page state.', taskId)
   }
 
   private async waitForLessonActivation(type: CourseTask['type'], index: number): Promise<void> {

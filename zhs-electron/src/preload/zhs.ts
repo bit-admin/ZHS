@@ -2,6 +2,7 @@ import { ipcRenderer, webFrame } from 'electron'
 import type {
   CourseType,
   ElementRect,
+  LessonReadinessSnapshot,
   LessonSnapshot,
   OptimizePageResult,
   ProgressSnapshot,
@@ -70,6 +71,8 @@ async function handleProbe(kind: string, payload: Record<string, unknown>): Prom
       return optimizePage(type)
     case 'enumerateLessons':
       return enumerateLessons(type, Boolean(payload.includeAll))
+    case 'lessonReadiness':
+      return getLessonReadiness(type)
     case 'lessonRect':
       return getLessonRect(type, Number(payload.index))
     case 'lessonName':
@@ -161,6 +164,30 @@ function enumerateLessons(type?: CourseType, includeAll = false): LessonSnapshot
       }
     })
     .filter((lesson) => includeAll || !lesson.done)
+}
+
+function getLessonReadiness(type?: CourseType): LessonReadinessSnapshot {
+  const lessons = Array.from(document.querySelectorAll<HTMLElement>(lessonSelector(type)))
+  const progressSelector = type === 'hike' ? '.rate' : '.progress-num'
+  const progressCount = lessons.filter((element) => Boolean(textOf(element.querySelector(progressSelector)))).length
+  const doneCount = lessons.filter((element) => isLessonDone(element, type)).length
+  const activeCount = lessons.filter((element) => isLessonActive(element, type)).length
+  const signature = lessons
+    .map((element, index) => [
+      index,
+      isLessonDone(element, type) ? '1' : '0',
+      isLessonActive(element, type) ? '1' : '0',
+      lessonProgress(element, type)
+    ].join(':'))
+    .join('|')
+
+  return {
+    count: lessons.length,
+    doneCount,
+    progressCount,
+    activeCount,
+    signature
+  }
 }
 
 function getLessonRect(type?: CourseType, index = 0): ElementRect | null {

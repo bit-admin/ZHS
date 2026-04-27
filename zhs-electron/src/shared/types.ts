@@ -64,6 +64,14 @@ export interface LessonSnapshot {
   rect: ElementRect | null
 }
 
+export interface LessonReadinessSnapshot {
+  count: number
+  doneCount: number
+  progressCount: number
+  activeCount: number
+  signature: string
+}
+
 export interface ProgressSnapshot {
   text: string
   percent: number

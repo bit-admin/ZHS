@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import type {
   CourseType,
   ElementRect,
+  LessonReadinessSnapshot,
   LessonSnapshot,
   OptimizePageResult,
   ProgressSnapshot,
@@ -119,6 +120,13 @@ export function enumerateLessons(
   includeAll: boolean
 ): Promise<LessonSnapshot[]> {
   return probe.request<LessonSnapshot[]>('enumerateLessons', { type, includeAll }, 8000)
+}
+
+export function getLessonReadiness(
+  probe: WebsiteProbeClient,
+  type: CourseType
+): Promise<LessonReadinessSnapshot> {
+  return probe.request<LessonReadinessSnapshot>('lessonReadiness', { type }, 5000)
 }
 
 export function getLessonRect(
