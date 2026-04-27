@@ -22,14 +22,12 @@ jobs:
             artifact: macos-installers
             files: |
               zhs-electron/dist/*.dmg
-              zhs-electron/dist/*.dmg.blockmap
           - platform: Windows
             os: windows-latest
             command: npm run build:win
             artifact: windows-installers
             files: |
               zhs-electron/dist/*.exe
-              zhs-electron/dist/*.exe.blockmap
 
     defaults:
       run:

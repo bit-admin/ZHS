@@ -1,6 +1,8 @@
 # ZHS Autovisor Electron
 
-Electron port of the Python Autovisor reference implementation.
+Electron port of the Python Autovisor (CXRunfree/Autovisor) reference implementation.
+
+Be patient as the website may be very slow.
 
 ## Development
 
