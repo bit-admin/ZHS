@@ -310,18 +310,40 @@ function startCaptchaObserver(): void {
   }
 
   const observer = new MutationObserver(checkCaptcha)
-  observer.observe(root, { childList: true, subtree: true })
+  observer.observe(root, { attributes: true, childList: true, subtree: true })
   checkCaptcha()
 }
 
 function checkCaptcha(): void {
-  const visible = Boolean(document.querySelector('.yidun_modal__title'))
+  const visible = Array.from(document.querySelectorAll<HTMLElement>('.yidun_modal__title')).some(isElementVisible)
   if (visible === captchaVisible) {
     return
   }
 
   captchaVisible = visible
   ipcRenderer.send('zhs:captcha-state', { visible })
+}
+
+function isElementVisible(element: HTMLElement): boolean {
+  if (element.hidden || element.getAttribute('aria-hidden') === 'true') {
+    return false
+  }
+
+  let node: HTMLElement | null = element
+  while (node) {
+    const style = window.getComputedStyle(node)
+    if (
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      style.visibility === 'collapse' ||
+      Number(style.opacity) === 0
+    ) {
+      return false
+    }
+    node = node.parentElement
+  }
+
+  return element.getClientRects().length > 0
 }
 
 function lessonSelector(type?: CourseType): string {
